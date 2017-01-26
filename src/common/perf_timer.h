@@ -41,7 +41,7 @@ namespace tools
 class PerformanceTimer;
 
 extern el::Level performance_timer_log_level;
-extern __thread std::vector<PerformanceTimer*> *performance_timers;
+extern std::vector<PerformanceTimer*> *performance_timers;
 
 class PerformanceTimer
 {

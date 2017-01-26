@@ -35,7 +35,7 @@ namespace tools
 {
 
 el::Level performance_timer_log_level = el::Level::Debug;
-__thread std::vector<PerformanceTimer*> *performance_timers = NULL;
+std::vector<PerformanceTimer*> *performance_timers = NULL;
 
 void set_performance_timer_log_level(el::Level level)
 {
