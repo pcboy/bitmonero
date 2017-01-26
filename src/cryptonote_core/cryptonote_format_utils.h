@@ -36,7 +36,8 @@
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "ringct/rctOps.h"
-
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/utility.hpp>
 
 namespace cryptonote
 {
@@ -71,6 +72,11 @@ namespace cryptonote
 
     tx_destination_entry() : amount(0), addr(AUTO_VAL_INIT(addr)) { }
     tx_destination_entry(uint64_t a, const account_public_address &ad) : amount(a), addr(ad) { }
+
+    BEGIN_SERIALIZE_OBJECT()
+      VARINT_FIELD(amount)
+      FIELD(addr)
+    END_SERIALIZE()
   };
 
   //---------------------------------------------------------------
@@ -78,9 +84,9 @@ namespace cryptonote
   bool construct_tx_and_get_tx_key(const account_keys& sender_account_keys, const std::vector<tx_source_entry>& sources, const std::vector<tx_destination_entry>& destinations, std::vector<uint8_t> extra, transaction& tx, uint64_t unlock_time, crypto::secret_key &tx_key, bool rct = false);
 
   template<typename T>
-  bool find_tx_extra_field_by_type(const std::vector<tx_extra_field>& tx_extra_fields, T& field)
+  bool find_tx_extra_field_by_type(const std::vector<tx_extra_field>& tx_extra_fields, T& field, size_t index = 0)
   {
-    auto it = std::find_if(tx_extra_fields.begin(), tx_extra_fields.end(), [](const tx_extra_field& f) { return typeid(T) == f.type(); });
+    auto it = std::find_if(tx_extra_fields.begin(), tx_extra_fields.end(), [&index](const tx_extra_field& f) { return typeid(T) == f.type() && !index--; });
     if(tx_extra_fields.end() == it)
       return false;
 
@@ -89,17 +95,18 @@ namespace cryptonote
   }
 
   bool parse_tx_extra(const std::vector<uint8_t>& tx_extra, std::vector<tx_extra_field>& tx_extra_fields);
-  crypto::public_key get_tx_pub_key_from_extra(const std::vector<uint8_t>& tx_extra);
-  crypto::public_key get_tx_pub_key_from_extra(const transaction_prefix& tx);
-  crypto::public_key get_tx_pub_key_from_extra(const transaction& tx);
+  crypto::public_key get_tx_pub_key_from_extra(const std::vector<uint8_t>& tx_extra, size_t pk_index = 0);
+  crypto::public_key get_tx_pub_key_from_extra(const transaction_prefix& tx, size_t pk_index = 0);
+  crypto::public_key get_tx_pub_key_from_extra(const transaction& tx, size_t pk_index = 0);
   bool add_tx_pub_key_to_extra(transaction& tx, const crypto::public_key& tx_pub_key);
   bool add_extra_nonce_to_tx_extra(std::vector<uint8_t>& tx_extra, const blobdata& extra_nonce);
-  bool remove_extra_nonce_tx_extra(std::vector<uint8_t>& tx_extra);
+  bool remove_field_from_tx_extra(std::vector<uint8_t>& tx_extra, const std::type_info &type);
   void set_payment_id_to_tx_extra_nonce(blobdata& extra_nonce, const crypto::hash& payment_id);
   void set_encrypted_payment_id_to_tx_extra_nonce(blobdata& extra_nonce, const crypto::hash8& payment_id);
   bool get_payment_id_from_tx_extra_nonce(const blobdata& extra_nonce, crypto::hash& payment_id);
   bool get_encrypted_payment_id_from_tx_extra_nonce(const blobdata& extra_nonce, crypto::hash8& payment_id);
   bool is_out_to_acc(const account_keys& acc, const txout_to_key& out_key, const crypto::public_key& tx_pub_key, size_t output_index);
+  bool is_out_to_acc_precomp(const crypto::public_key& spend_public_key, const txout_to_key& out_key, const crypto::key_derivation& derivation, size_t output_index);
   bool lookup_acc_outs(const account_keys& acc, const transaction& tx, const crypto::public_key& tx_pub_key, std::vector<size_t>& outs, uint64_t& money_transfered);
   bool lookup_acc_outs(const account_keys& acc, const transaction& tx, std::vector<size_t>& outs, uint64_t& money_transfered);
   bool get_tx_fee(const transaction& tx, uint64_t & fee);
@@ -244,4 +251,24 @@ namespace cryptonote
   CHECK_AND_ASSERT_MES(variant_var.type() == typeid(specific_type), fail_return_val, "wrong variant type: " << variant_var.type().name() << ", expected " << typeid(specific_type).name()); \
   specific_type& variable_name = boost::get<specific_type>(variant_var);
 
+}
+
+BOOST_CLASS_VERSION(cryptonote::tx_source_entry, 0)
+
+namespace boost
+{
+  namespace serialization
+  {
+    template <class Archive>
+    inline void serialize(Archive &a, cryptonote::tx_source_entry &x, const boost::serialization::version_type ver)
+    {
+      a & x.outputs;
+      a & x.real_output;
+      a & x.real_out_tx_key;
+      a & x.real_output_in_tx_index;
+      a & x.amount;
+      a & x.rct;
+      a & x.mask;
+    }
+  }
 }

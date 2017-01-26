@@ -40,29 +40,12 @@
 using namespace crypto;
 using namespace rct;
 
-TEST(ringct, SNL)
-{
-  key x, P1;
-  skpkGen(x, P1);
-
-  key P2 = pkGen();
-  key P3 = pkGen();
-
-  key L1, s1, s2;
-  GenSchnorrNonLinkable(L1, s1, s2, x, P1, P2, 0);
-
-  // a valid one
-  // an invalid one
-  ASSERT_TRUE(VerSchnorrNonLinkable(P1, P2, L1, s1, s2));
-  ASSERT_FALSE(VerSchnorrNonLinkable(P1, P3, L1, s1, s2));
-}
-
-TEST(ringct, ASNL)
+TEST(ringct, Borromean)
 {
     int j = 0;
 
-        //Tests for ASNL
-        //#ASNL true one, false one, C != sum Ci, and one out of the range..
+        //Tests for Borromean signatures
+        //#boro true one, false one, C != sum Ci, and one out of the range..
         int N = 64;
         key64 xv;
         key64 P1v;
@@ -74,34 +57,30 @@ TEST(ringct, ASNL)
 
             xv[j] = skGen();
             if ( (int)indi[j] == 0 ) {
-                P1v[j] = scalarmultBase(xv[j]);
-                P2v[j] = pkGen();
-
+                scalarmultBase(P1v[j], xv[j]);
             } else {
-
-                P2v[j] = scalarmultBase(xv[j]);
-                P1v[j] = pkGen();
-
+                addKeys1(P1v[j], xv[j], H2[j]);
             }
+            subKeys(P2v[j], P1v[j], H2[j]);
         }
 
         //#true one
-        asnlSig L1s2s = GenASNL(xv, P1v, P2v, indi);
-        ASSERT_TRUE(VerASNL(P1v, P2v, L1s2s));
+        boroSig bb = genBorromean(xv, P1v, P2v, indi);
+        ASSERT_TRUE(verifyBorromean(bb, P1v, P2v));
 
         //#false one
         indi[3] = (indi[3] + 1) % 2;
-        L1s2s = GenASNL(xv, P1v, P2v, indi);
-        ASSERT_FALSE(VerASNL(P1v, P2v, L1s2s));
+        bb = genBorromean(xv, P1v, P2v, indi);
+        ASSERT_FALSE(verifyBorromean(bb, P1v, P2v));
 
         //#true one again
         indi[3] = (indi[3] + 1) % 2;
-        L1s2s = GenASNL(xv, P1v, P2v, indi);
-        ASSERT_TRUE(VerASNL(P1v, P2v, L1s2s));
+        bb = genBorromean(xv, P1v, P2v, indi);
+        ASSERT_TRUE(verifyBorromean(bb, P1v, P2v));
 
         //#false one
-        L1s2s = GenASNL(xv, P2v, P1v, indi);
-        ASSERT_FALSE(VerASNL(P1v, P2v, L1s2s));
+        bb = genBorromean(xv, P2v, P1v, indi);
+        ASSERT_FALSE(verifyBorromean(bb, P1v, P2v));
 }
 
 TEST(ringct, MG_sigs)
@@ -246,7 +225,6 @@ TEST(ringct, range_proofs_with_fee)
         //add txn fee for 1
         //has no corresponding destination..
         amounts.push_back(1);
-        amount_keys.push_back(hash_to_scalar(zero()));
 
         //add output for 12500
         amounts.push_back(12500);
@@ -356,10 +334,12 @@ static rct::rctSig make_sample_rct_sig(int n_inputs, const uint64_t input_amount
 
     for (int n = 0; n < n_outputs; ++n) {
         amounts.push_back(output_amounts[n]);
-        amount_keys.push_back(rct::hash_to_scalar(rct::zero()));
         skpkGen(Sk, Pk);
         if (n < n_outputs - 1 || !last_is_fee)
+        {
           destinations.push_back(Pk);
+          amount_keys.push_back(rct::hash_to_scalar(rct::zero()));
+        }
     }
 
     return genRct(rct::zero(), sc, pc, destinations, amounts, amount_keys, 3);;

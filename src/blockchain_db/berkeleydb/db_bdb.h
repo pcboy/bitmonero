@@ -250,7 +250,7 @@ public:
 
   virtual void unlock();
 
-  virtual bool block_exists(const crypto::hash& h) const;
+  virtual bool block_exists(const crypto::hash& h, uint64_t *height = NULL) const;
 
   virtual block get_block(const crypto::hash& h) const;
 
@@ -324,7 +324,7 @@ public:
                             );
 
   virtual void set_batch_transactions(bool batch_transactions);
-  virtual void batch_start(uint64_t batch_num_blocks=0);
+  virtual bool batch_start(uint64_t batch_num_blocks=0);
   virtual void batch_commit();
   virtual void batch_stop();
   virtual void batch_abort();

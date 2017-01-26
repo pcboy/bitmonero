@@ -66,25 +66,24 @@ else()
   set(Blocks "")
 endif()
 
-bitmonero_private_headers(cryptonote_core
+monero_private_headers(cryptonote_core
   ${crypto_private_headers})
-bitmonero_add_library(cryptonote_core
+monero_add_library(cryptonote_core
   ${cryptonote_core_sources}
   ${cryptonote_core_headers}
   ${cryptonote_core_private_headers})
 target_link_libraries(cryptonote_core
-  LINK_PUBLIC
+  PUBLIC
     common
     crypto
-    otshell_utils
     blockchain_db
     ringct
     ${Boost_DATE_TIME_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_SERIALIZATION_LIBRARY}
-  LINK_PRIVATE
-    ${Blocks}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
+  PRIVATE
+    ${Blocks}
     ${EXTRA_LIBRARIES})

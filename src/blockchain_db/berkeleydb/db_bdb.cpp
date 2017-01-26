@@ -1235,7 +1235,7 @@ void BlockchainBDB::unlock()
     check_open();
 }
 
-bool BlockchainBDB::block_exists(const crypto::hash& h) const
+bool BlockchainBDB::block_exists(const crypto::hash& h, uint64_t *height) const
 {
     LOG_PRINT_L3("BlockchainBDB::" << __func__);
     check_open();
@@ -1250,6 +1250,9 @@ bool BlockchainBDB::block_exists(const crypto::hash& h) const
     }
     else if (get_result)
         throw0(DB_ERROR("DB error attempting to fetch block index from hash"));
+
+    if (height)
+      *height = get_result - 1;
 
     return true;
 }
@@ -1810,9 +1813,10 @@ bool BlockchainBDB::has_key_image(const crypto::key_image& img) const
 // Ostensibly BerkeleyDB has batch transaction support built-in,
 // so the following few functions will be NOP.
 
-void BlockchainBDB::batch_start(uint64_t batch_num_blocks)
+bool BlockchainBDB::batch_start(uint64_t batch_num_blocks)
 {
     LOG_PRINT_L3("BlockchainBDB::" << __func__);
+    return false;
 }
 
 void BlockchainBDB::batch_commit()

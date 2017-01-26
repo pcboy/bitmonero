@@ -30,6 +30,9 @@
 #include "version.h"
 #include "daemon/command_server.h"
 
+#undef MONERO_DEFAULT_LOG_CATEGORY
+#define MONERO_DEFAULT_LOG_CATEGORY "daemon"
+
 namespace daemonize {
 
 namespace p = std::placeholders;
@@ -37,10 +40,11 @@ namespace p = std::placeholders;
 t_command_server::t_command_server(
     uint32_t ip
   , uint16_t port
+  , const std::string &user_agent
   , bool is_rpc
   , cryptonote::core_rpc_server* rpc_server
   )
-  : m_parser(ip, port, is_rpc, rpc_server)
+  : m_parser(ip, port, user_agent, is_rpc, rpc_server)
   , m_command_lookup()
   , m_is_rpc(is_rpc)
 {
@@ -92,7 +96,7 @@ t_command_server::t_command_server(
   m_command_lookup.set_handler(
       "start_mining"
     , std::bind(&t_command_parser_executor::start_mining, &m_parser, p::_1)
-    , "Start mining for specified address, start_mining <addr> [threads=1]"
+    , "Start mining for specified address, start_mining <addr> [<threads>], default 1 thread"
     );
   m_command_lookup.set_handler(
       "stop_mining"
@@ -108,6 +112,11 @@ t_command_server::t_command_server(
       "print_pool_sh"
     , std::bind(&t_command_parser_executor::print_transaction_pool_short, &m_parser, p::_1)
     , "Print transaction pool (short format)"
+    );
+  m_command_lookup.set_handler(
+      "print_pool_stats"
+    , std::bind(&t_command_parser_executor::print_transaction_pool_stats, &m_parser, p::_1)
+    , "Print transaction pool statistics"
     );
   m_command_lookup.set_handler(
       "show_hr"
@@ -127,7 +136,7 @@ t_command_server::t_command_server(
   m_command_lookup.set_handler(
       "set_log"
     , std::bind(&t_command_parser_executor::set_log_level, &m_parser, p::_1)
-    , "set_log <level> - Change current log detalization level, <level> is a number 0-4"
+    , "set_log <level>|<categories> - Change current loglevel, <level> is a number 0-4"
     );
   m_command_lookup.set_handler(
       "diff"
@@ -168,11 +177,6 @@ t_command_server::t_command_server(
       "limit_down"
     , std::bind(&t_command_parser_executor::set_limit_down, &m_parser, p::_1)
     , "limit <kB/s> - Set download limit"
-    );
-    m_command_lookup.set_handler(
-      "fast_exit"
-    , std::bind(&t_command_parser_executor::fast_exit, &m_parser, p::_1)
-    , "Exit"
     );
     m_command_lookup.set_handler(
       "out_peers"
@@ -218,6 +222,21 @@ t_command_server::t_command_server(
       "output_histogram"
     , std::bind(&t_command_parser_executor::output_histogram, &m_parser, p::_1)
     , "Print output histogram (amount, instances)"
+    );
+    m_command_lookup.set_handler(
+      "print_coinbase_tx_sum"
+    , std::bind(&t_command_parser_executor::print_coinbase_tx_sum, &m_parser, p::_1)
+    , "Print sum of coinbase transactions (start height, block count)"
+    );
+    m_command_lookup.set_handler(
+      "alt_chain_info"
+    , std::bind(&t_command_parser_executor::alt_chain_info, &m_parser, p::_1)
+    , "Print information about alternative chains"
+    );
+    m_command_lookup.set_handler(
+      "bc_dyn_stats"
+    , std::bind(&t_command_parser_executor::print_blockchain_dynamic_stats, &m_parser, p::_1)
+    , "Print information about current blockchain dynamic state"
     );
 }
 

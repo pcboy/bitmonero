@@ -39,21 +39,15 @@ set(ringct_private_headers
   rctSigs.h
   rctTypes.h)
 
-bitmonero_private_headers(ringct
+monero_private_headers(ringct
   ${crypto_private_headers})
-bitmonero_add_library(ringct
+monero_add_library(ringct
   ${ringct_sources}
   ${ringct_headers}
   ${ringct_private_headers})
 target_link_libraries(ringct
-  LINK_PUBLIC
+  PUBLIC
     common
     crypto
-    ${Boost_DATE_TIME_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    ${Boost_SERIALIZATION_LIBRARY}
-  LINK_PRIVATE
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
+  PRIVATE
     ${EXTRA_LIBRARIES})

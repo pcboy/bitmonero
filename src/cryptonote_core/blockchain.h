@@ -197,10 +197,11 @@ namespace cryptonote
      *
      * @param h the hash to look for
      * @param blk return-by-reference variable to put result block in
+     * @param orphan if non-NULL, will be set to true if not in the main chain, false otherwise
      *
      * @return true if the block was found, else false
      */
-    bool get_block_by_hash(const crypto::hash &h, block &blk) const;
+    bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL) const;
 
     /**
      * @brief get all block hashes (main chain, alt chains, and invalid blocks)
@@ -452,7 +453,7 @@ namespace cryptonote
      *
      * @return true
      */
-    bool get_outs(const COMMAND_RPC_GET_OUTPUTS::request& req, COMMAND_RPC_GET_OUTPUTS::response& res) const;
+    bool get_outs(const COMMAND_RPC_GET_OUTPUTS_BIN::request& req, COMMAND_RPC_GET_OUTPUTS_BIN::response& res) const;
 
     /**
      * @brief gets random ringct outputs to mix with
@@ -511,6 +512,47 @@ namespace cryptonote
      * @return false if any input is invalid, otherwise true
      */
     bool check_tx_inputs(transaction& tx, uint64_t& pmax_used_block_height, crypto::hash& max_used_block_id, tx_verification_context &tvc, bool kept_by_block = false);
+
+    /**
+     * @brief get dynamic per kB fee for a given block size
+     *
+     * The dynamic fee is based on the block size in a past window, and
+     * the current block reward. It is expressed by kB.
+     *
+     * @param block_reward the current block reward
+     * @param median_block_size the median blob's size in the past window
+     *
+     * @return the per kB fee
+     */
+    static uint64_t get_dynamic_per_kb_fee(uint64_t block_reward, size_t median_block_size);
+
+    /**
+     * @brief get dynamic per kB fee estimate for the next few blocks
+     *
+     * The dynamic fee is based on the block size in a past window, and
+     * the current block reward. It is expressed by kB. This function
+     * calculates an estimate for a dynamic fee which will be valid for
+     * the next grace_blocks
+     *
+     * @param grace_blocks number of blocks we want the fee to be valid for
+     *
+     * @return the per kB fee estimate
+     */
+    uint64_t get_dynamic_per_kb_fee_estimate(uint64_t grace_blocks) const;
+
+    /**
+     * @brief validate a transaction's fee
+     *
+     * This function validates the fee is enough for the transaction.
+     * This is based on the size of the transaction blob, and, after a
+     * height threshold, on the average size of transaction in a past window
+     *
+     * @param blob_size the transaction blob's size
+     * @param fee the fee
+     *
+     * @return true if the fee is enough, false otherwise
+     */
+    bool check_fee(size_t blob_size, uint64_t fee) const;
 
     /**
      * @brief check that a transaction's outputs conform to current standards
@@ -729,10 +771,11 @@ namespace cryptonote
      *
      * @param amounts optional set of amounts to lookup
      * @param unlocked whether to restrict instances to unlocked ones
+     * @param recent_cutoff timestamp to consider outputs as recent
      *
      * @return a set of amount/instances
      */
-    std::map<uint64_t, uint64_t> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked) const;
+    std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff) const;
 
     /**
      * @brief perform a check on all key images in the blockchain
@@ -801,6 +844,16 @@ namespace cryptonote
      */
     void block_longhash_worker(const uint64_t height, const std::vector<block> &blocks,
         std::unordered_map<crypto::hash, crypto::hash> &map) const;
+
+    /**
+     * @brief returns a set of known alternate chains
+     *
+     * @return a list of chains
+     */
+    std::list<std::pair<block_extended_info,uint64_t>> get_alternative_chains() const;
+
+    void cancel();
+
   private:
 
     // TODO: evaluate whether or not each of these typedefs are left over from blockchain_storage
@@ -869,6 +922,8 @@ namespace cryptonote
     HardFork *m_hardfork;
 
     bool m_testnet;
+
+    std::atomic<bool> m_cancel;
 
     /**
      * @brief collects the keys for all outputs being "spent" as an input

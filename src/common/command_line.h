@@ -43,6 +43,9 @@ namespace command_line
 
   std::string input_line(const std::string& prompt);
 
+  //! \return True if `str` is `is_iequal("y" || "yes" || `tr("yes"))`.
+  bool is_yes(const std::string& str);
+
   template<typename T, bool required = false>
   struct arg_descriptor;
 
@@ -204,6 +207,7 @@ namespace command_line
   extern const arg_descriptor<bool> arg_version;
   extern const arg_descriptor<std::string> arg_data_dir;
   extern const arg_descriptor<std::string> arg_testnet_data_dir;
+  extern const arg_descriptor<std::string> arg_user_agent;
   extern const arg_descriptor<bool>		arg_test_drop_download;
   extern const arg_descriptor<uint64_t>	arg_test_drop_download_height;
   extern const arg_descriptor<int> 		arg_test_dbg_lock_sleep;
@@ -213,6 +217,6 @@ namespace command_line
   extern const arg_descriptor<std::string> arg_db_sync_mode;
   extern const arg_descriptor<uint64_t> arg_fast_block_sync;
   extern const arg_descriptor<uint64_t> arg_prep_blocks_threads;
-  extern const arg_descriptor<uint64_t> arg_db_auto_remove_logs;
   extern const arg_descriptor<uint64_t> arg_show_time_stats;
+  extern const arg_descriptor<size_t> arg_block_sync_size;
 }

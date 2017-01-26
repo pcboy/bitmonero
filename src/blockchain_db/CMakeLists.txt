@@ -53,25 +53,19 @@ if (BERKELEY_DB)
   )
 endif()
 
-bitmonero_private_headers(blockchain_db
+monero_private_headers(blockchain_db
   ${crypto_private_headers})
-bitmonero_add_library(blockchain_db
+monero_add_library(blockchain_db
   ${blockchain_db_sources}
   ${blockchain_db_headers}
   ${blockchain_db_private_headers})
 target_link_libraries(blockchain_db
-  LINK_PUBLIC
+  PUBLIC
     common
     crypto
-    cryptonote_core
-    ${Boost_DATE_TIME_LIBRARY}
-    ${Boost_CHRONO_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    ${Boost_SERIALIZATION_LIBRARY}
     ${LMDB_LIBRARY}
     ${BDB_LIBRARY}
-  LINK_PRIVATE
     ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
+  PRIVATE
     ${EXTRA_LIBRARIES})

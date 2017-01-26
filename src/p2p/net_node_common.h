@@ -43,13 +43,14 @@ namespace nodetool
   template<class t_connection_context>
   struct i_p2p_endpoint
   {
+    virtual bool relay_notify_to_list(int command, const std::string& data_buff, const std::list<boost::uuids::uuid>& connections)=0;
     virtual bool relay_notify_to_all(int command, const std::string& data_buff, const epee::net_utils::connection_context_base& context)=0;
     virtual bool invoke_command_to_peer(int command, const std::string& req_buff, std::string& resp_buff, const epee::net_utils::connection_context_base& context)=0;
     virtual bool invoke_notify_to_peer(int command, const std::string& req_buff, const epee::net_utils::connection_context_base& context)=0;
     virtual bool drop_connection(const epee::net_utils::connection_context_base& context)=0;
     virtual void request_callback(const epee::net_utils::connection_context_base& context)=0;
     virtual uint64_t get_connections_count()=0;
-    virtual void for_each_connection(std::function<bool(t_connection_context&, peerid_type)> f)=0;
+    virtual void for_each_connection(std::function<bool(t_connection_context&, peerid_type, uint32_t)> f)=0;
     virtual bool block_ip(uint32_t adress, time_t seconds = 0)=0;
     virtual bool unblock_ip(uint32_t adress)=0;
     virtual std::map<uint32_t, time_t> get_blocked_ips()=0;
@@ -59,6 +60,10 @@ namespace nodetool
   template<class t_connection_context>
   struct p2p_endpoint_stub: public i_p2p_endpoint<t_connection_context>
   {
+    virtual bool relay_notify_to_list(int command, const std::string& data_buff, const std::list<boost::uuids::uuid>& connections)
+    {
+      return false;
+    }
     virtual bool relay_notify_to_all(int command, const std::string& data_buff, const epee::net_utils::connection_context_base& context)
     {
       return false;
@@ -79,7 +84,7 @@ namespace nodetool
     {
 
     }
-    virtual void for_each_connection(std::function<bool(t_connection_context&,peerid_type)> f)
+    virtual void for_each_connection(std::function<bool(t_connection_context&,peerid_type,uint32_t)> f)
     {
 
     }

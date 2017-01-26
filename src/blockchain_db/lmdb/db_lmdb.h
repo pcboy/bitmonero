@@ -168,7 +168,7 @@ public:
 
   virtual void unlock();
 
-  virtual bool block_exists(const crypto::hash& h) const;
+  virtual bool block_exists(const crypto::hash& h, uint64_t *height = NULL) const;
 
   virtual block get_block(const crypto::hash& h) const;
 
@@ -209,6 +209,8 @@ public:
 
   virtual transaction get_tx(const crypto::hash& h) const;
 
+  virtual bool get_tx(const crypto::hash& h, transaction &tx) const;
+
   virtual uint64_t get_tx_count() const;
 
   virtual std::vector<transaction> get_tx_list(const std::vector<crypto::hash>& hlist) const;
@@ -245,7 +247,7 @@ public:
                             );
 
   virtual void set_batch_transactions(bool batch_transactions);
-  virtual void batch_start(uint64_t batch_num_blocks=0);
+  virtual bool batch_start(uint64_t batch_num_blocks=0);
   virtual void batch_commit();
   virtual void batch_stop();
   virtual void batch_abort();
@@ -265,10 +267,11 @@ public:
    *
    * @param amounts optional set of amounts to lookup
    * @param unlocked whether to restrict count to unlocked outputs
+   * @param recent_cutoff timestamp to determine which outputs are recent
    *
    * @return a set of amount/instances
    */
-  std::map<uint64_t, uint64_t> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked) const;
+  std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff) const;
 
 private:
   void do_resize(uint64_t size_increase=0);
@@ -366,7 +369,6 @@ private:
 
   MDB_dbi m_properties;
 
-  uint64_t m_height;
   uint64_t m_num_txs;
   uint64_t m_num_outputs;
   mutable uint64_t m_cum_size;	// used in batch size estimation

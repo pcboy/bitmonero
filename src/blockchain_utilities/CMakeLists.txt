@@ -39,7 +39,7 @@ set(blockchain_import_private_headers
   bootstrap_serialization.h
   )
 
-bitmonero_private_headers(blockchain_import
+monero_private_headers(blockchain_import
 	  ${blockchain_import_private_headers})
 
 set(blockchain_export_sources
@@ -54,40 +54,30 @@ set(blockchain_export_private_headers
   bootstrap_serialization.h
   )
 
-bitmonero_private_headers(blockchain_export
+monero_private_headers(blockchain_export
 	  ${blockchain_export_private_headers})
-
-
-set(blockchain_dump_sources
-  blockchain_dump.cpp
-  )
-
-set(blockchain_dump_private_headers)
-
-bitmonero_private_headers(blockchain_dump
-	  ${blockchain_dump_private_headers})
 
 
 set(cn_deserialize_sources
   cn_deserialize.cpp
   )
 
-set(cn_deserialize_private_headers)
 
-bitmonero_private_headers(cn_deserialize
-	  ${cn_deserialize_private_headers})
-
-
-bitmonero_add_executable(blockchain_import
+monero_add_executable(blockchain_import
   ${blockchain_import_sources}
   ${blockchain_import_private_headers})
 
 target_link_libraries(blockchain_import
-  LINK_PRIVATE
+  PRIVATE
     cryptonote_core
-	blockchain_db
-	p2p
-    ${CMAKE_THREAD_LIBS_INIT})
+    blockchain_db
+    p2p
+    epee
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+    ${Boost_THREAD_LIBRARY}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${EXTRA_LIBRARIES})
 
 if(ARCH_WIDTH)
   target_compile_definitions(blockchain_import
@@ -98,43 +88,31 @@ add_dependencies(blockchain_import
 	version)
 set_property(TARGET blockchain_import
 	PROPERTY
-	OUTPUT_NAME "blockchain_import")
+	OUTPUT_NAME "monero-blockchain-import")
 
-bitmonero_add_executable(blockchain_export
+monero_add_executable(blockchain_export
   ${blockchain_export_sources}
   ${blockchain_export_private_headers})
 
 target_link_libraries(blockchain_export
-  LINK_PRIVATE
+  PRIVATE
     cryptonote_core
-	p2p
-	blockchain_db
-    ${CMAKE_THREAD_LIBS_INIT})
+    blockchain_db
+    p2p
+    epee
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+    ${Boost_THREAD_LIBRARY}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${EXTRA_LIBRARIES})
 
 add_dependencies(blockchain_export
 	version)
 set_property(TARGET blockchain_export
 	PROPERTY
-	OUTPUT_NAME "blockchain_export")
+	OUTPUT_NAME "monero-blockchain-export")
 
-bitmonero_add_executable(blockchain_dump
-  ${blockchain_dump_sources}
-  ${blockchain_dump_private_headers})
-
-target_link_libraries(blockchain_dump
-  LINK_PRIVATE
-    cryptonote_core
-	blockchain_db
-	p2p
-    ${CMAKE_THREAD_LIBS_INIT})
-
-add_dependencies(blockchain_dump
-	version)
-set_property(TARGET blockchain_dump
-	PROPERTY
-	OUTPUT_NAME "blockchain_dump")
-
-bitmonero_add_executable(cn_deserialize
+monero_add_executable(cn_deserialize
   ${cn_deserialize_sources}
   ${cn_deserialize_private_headers})
 
@@ -142,11 +120,12 @@ target_link_libraries(cn_deserialize
   LINK_PRIVATE
     cryptonote_core
 	p2p
+    epee
     ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(cn_deserialize
 	version)
 set_property(TARGET cn_deserialize
 	PROPERTY
-	OUTPUT_NAME "cn_deserialize")
+	OUTPUT_NAME "monero-utils-deserialize")
 

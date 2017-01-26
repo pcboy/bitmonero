@@ -34,13 +34,13 @@ if (WIN32 OR STATIC)
   add_definitions(-DMINIUPNP_STATICLIB)
 endif ()
 
-function (bitmonero_private_headers group)
+function (monero_private_headers group)
   source_group("${group}\\Private"
     FILES
       ${ARGN})
 endfunction ()
 
-function (bitmonero_install_headers subdir)
+function (monero_install_headers subdir)
   install(
     FILES       ${ARGN}
     DESTINATION "include/${subdir}"
@@ -58,7 +58,7 @@ function (enable_stack_trace target)
   endif()
 endfunction()
 
-function (bitmonero_add_executable name)
+function (monero_add_executable name)
   source_group("${name}"
     FILES
       ${ARGN})
@@ -66,7 +66,7 @@ function (bitmonero_add_executable name)
   add_executable("${name}"
     ${ARGN})
   target_link_libraries("${name}"
-    LINK_PRIVATE
+    PRIVATE
       ${EXTRA_LIBRARIES})
   set_property(TARGET "${name}"
     PROPERTY
@@ -77,16 +77,23 @@ function (bitmonero_add_executable name)
   enable_stack_trace("${name}")
 endfunction ()
 
-function (bitmonero_add_library name)
+function (monero_add_library name)
   source_group("${name}"
     FILES
       ${ARGN})
 
-  add_library("${name}"
-    ${ARGN})
+  # Define a ("virtual") object library and an actual library that links those
+  # objects together. The virtual libraries can be arbitrarily combined to link
+  # any subset of objects into one library archive. This is used for releasing
+  # libwallet, which combines multiple components.
+  set(objlib obj_${name})
+  add_library(${objlib} OBJECT ${ARGN})
+  add_library("${name}" $<TARGET_OBJECTS:${objlib}>)
   set_property(TARGET "${name}"
     PROPERTY
       FOLDER "libs")
+  target_compile_definitions(${objlib}
+    PRIVATE $<TARGET_PROPERTY:${name},INTERFACE_COMPILE_DEFINITIONS>)
 endfunction ()
 
 add_subdirectory(common)
@@ -100,7 +107,6 @@ add_subdirectory(wallet)
 add_subdirectory(p2p)
 add_subdirectory(cryptonote_protocol)
 
-add_subdirectory(miner)
 add_subdirectory(simplewallet)
 add_subdirectory(daemonizer)
 add_subdirectory(daemon)

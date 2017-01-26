@@ -54,21 +54,17 @@ else()
   )
 endif()
 
-bitmonero_private_headers(daemonizer
+monero_private_headers(daemonizer
   ${daemonizer_private_headers})
-bitmonero_add_library(daemonizer
+monero_add_library(daemonizer
   ${daemonizer_sources}
   ${daemonizer_headers}
   ${daemonizer_private_headers})
 target_link_libraries(daemonizer
-  LINK_PRIVATE
+  PUBLIC
     common
     ${Boost_CHRONO_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
-    ${Boost_REGEX_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${UPNP_LIBRARIES}
+  PRIVATE
     ${EXTRA_LIBRARIES})

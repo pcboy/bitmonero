@@ -41,7 +41,17 @@ namespace cryptonote
 #define CORE_RPC_STATUS_BUSY   "BUSY"
 #define CORE_RPC_STATUS_NOT_MINING "NOT MINING"
 
-#define CORE_RPC_VERSION 3
+// When making *any* change here, bump minor
+// If the change is incompatible, then bump major and set minor to 0
+// This ensures CORE_RPC_VERSION always increases, that every change
+// has its own version, and that clients can just test major to see
+// whether they can talk to a given daemon without having to know in
+// advance which version they will stop working with
+// Don't go over 32767 for any of these
+#define CORE_RPC_VERSION_MAJOR 1
+#define CORE_RPC_VERSION_MINOR 6
+#define MAKE_CORE_RPC_VERSION(major,minor) (((major)<<16)|(minor))
+#define CORE_RPC_VERSION MAKE_CORE_RPC_VERSION(CORE_RPC_VERSION_MAJOR, CORE_RPC_VERSION_MINOR)
 
   struct COMMAND_RPC_GET_HEIGHT
   {
@@ -112,6 +122,28 @@ namespace cryptonote
     };
   };
 
+  struct COMMAND_RPC_GET_BLOCKS_BY_HEIGHT
+  {
+    struct request
+    {
+      std::vector<uint64_t> heights;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(heights)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::vector<block_complete_entry> blocks;
+      std::string status;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(blocks)
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
   struct COMMAND_RPC_GET_HASHES_FAST
   {
 
@@ -162,6 +194,7 @@ namespace cryptonote
       std::string as_json;
       bool in_pool;
       uint64_t block_height;
+      std::vector<uint64_t> output_indices;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(tx_hash)
@@ -169,6 +202,7 @@ namespace cryptonote
         KV_SERIALIZE(as_json)
         KV_SERIALIZE(in_pool)
         KV_SERIALIZE(block_height)
+        KV_SERIALIZE(output_indices)
       END_KV_SERIALIZE_MAP()
     };
 
@@ -291,22 +325,22 @@ namespace cryptonote
     };
   };
   //-----------------------------------------------
-  struct COMMAND_RPC_GET_OUTPUTS
+  struct get_outputs_out
   {
-    struct out
-    {
-      uint64_t amount;
-      uint64_t index;
+    uint64_t amount;
+    uint64_t index;
 
-      BEGIN_KV_SERIALIZE_MAP()
-        KV_SERIALIZE(amount)
-        KV_SERIALIZE(index)
-      END_KV_SERIALIZE_MAP()
-    };
+    BEGIN_KV_SERIALIZE_MAP()
+      KV_SERIALIZE(amount)
+      KV_SERIALIZE(index)
+    END_KV_SERIALIZE_MAP()
+  };
 
+  struct COMMAND_RPC_GET_OUTPUTS_BIN
+  {
     struct request
     {
-      std::vector<out> outputs;
+      std::vector<get_outputs_out> outputs;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(outputs)
@@ -318,11 +352,55 @@ namespace cryptonote
       crypto::public_key key;
       rct::key mask;
       bool unlocked;
+      uint64_t height;
+      crypto::hash txid;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_VAL_POD_AS_BLOB(key)
         KV_SERIALIZE_VAL_POD_AS_BLOB(mask)
         KV_SERIALIZE(unlocked)
+        KV_SERIALIZE(height)
+        KV_SERIALIZE_VAL_POD_AS_BLOB(txid)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::vector<outkey> outs;
+      std::string status;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(outs)
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+  //-----------------------------------------------
+  struct COMMAND_RPC_GET_OUTPUTS
+  {
+    struct request
+    {
+      std::vector<get_outputs_out> outputs;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(outputs)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct outkey
+    {
+      std::string key;
+      std::string mask;
+      bool unlocked;
+      uint64_t height;
+      std::string txid;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(key)
+        KV_SERIALIZE(mask)
+        KV_SERIALIZE(unlocked)
+        KV_SERIALIZE(height)
+        KV_SERIALIZE(txid)
       END_KV_SERIALIZE_MAP()
     };
 
@@ -464,6 +542,9 @@ namespace cryptonote
       uint64_t grey_peerlist_size;
       bool testnet;
       std::string top_block_hash;
+      uint64_t cumulative_difficulty;
+      uint64_t block_size_limit;
+      uint64_t start_time;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -480,6 +561,9 @@ namespace cryptonote
         KV_SERIALIZE(grey_peerlist_size)
         KV_SERIALIZE(testnet)
         KV_SERIALIZE(top_block_hash)
+        KV_SERIALIZE(cumulative_difficulty)
+        KV_SERIALIZE(block_size_limit)
+        KV_SERIALIZE(start_time)
       END_KV_SERIALIZE_MAP()
     };
   };
@@ -631,7 +715,7 @@ namespace cryptonote
     };
   };
   
-  struct block_header_responce
+  struct block_header_response
   {
       uint8_t major_version;
       uint8_t minor_version;
@@ -644,6 +728,8 @@ namespace cryptonote
       std::string hash;
       difficulty_type difficulty;
       uint64_t reward;
+      uint64_t block_size;
+      uint64_t num_txes;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(major_version)
@@ -657,6 +743,8 @@ namespace cryptonote
         KV_SERIALIZE(hash)
         KV_SERIALIZE(difficulty)
         KV_SERIALIZE(reward)
+        KV_SERIALIZE(block_size)
+        KV_SERIALIZE(num_txes)
       END_KV_SERIALIZE_MAP()
   };
 
@@ -671,7 +759,7 @@ namespace cryptonote
     struct response
     {
       std::string status;
-      block_header_responce block_header;
+      block_header_response block_header;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(block_header)
@@ -695,7 +783,7 @@ namespace cryptonote
     struct response
     {
       std::string status;
-      block_header_responce block_header;
+      block_header_response block_header;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(block_header)
@@ -719,7 +807,7 @@ namespace cryptonote
     struct response
     {
       std::string status;
-      block_header_responce block_header;
+      block_header_response block_header;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(block_header)
@@ -745,7 +833,7 @@ namespace cryptonote
     struct response
     {
       std::string status;
-      block_header_responce block_header;
+      block_header_response block_header;
       std::vector<std::string> tx_hashes;
       std::string blob;
       std::string json;
@@ -843,6 +931,26 @@ namespace cryptonote
     };
   };
 
+  struct COMMAND_RPC_SET_LOG_CATEGORIES
+  {
+    struct request
+    {
+      std::string categories;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(categories)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string status;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
   struct tx_info
   {
     std::string id_hash;
@@ -855,6 +963,9 @@ namespace cryptonote
     uint64_t last_failed_height;
     std::string last_failed_id_hash;
     uint64_t receive_time;
+    bool relayed;
+    uint64_t last_relayed_time;
+    bool do_not_relay;
 
     BEGIN_KV_SERIALIZE_MAP()
       KV_SERIALIZE(id_hash)
@@ -867,6 +978,9 @@ namespace cryptonote
       KV_SERIALIZE(last_failed_height)
       KV_SERIALIZE(last_failed_id_hash)
       KV_SERIALIZE(receive_time)
+      KV_SERIALIZE(relayed)
+      KV_SERIALIZE(last_relayed_time)
+      KV_SERIALIZE(do_not_relay)
     END_KV_SERIALIZE_MAP()
   };
 
@@ -940,7 +1054,7 @@ namespace cryptonote
     struct response
     {
       std::string status;
-      std::vector<block_header_responce> headers;
+      std::vector<block_header_response> headers;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -1172,26 +1286,33 @@ namespace cryptonote
       uint64_t min_count;
       uint64_t max_count;
       bool unlocked;
+      uint64_t recent_cutoff;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(amounts);
         KV_SERIALIZE(min_count);
         KV_SERIALIZE(max_count);
         KV_SERIALIZE(unlocked);
+        KV_SERIALIZE(recent_cutoff);
       END_KV_SERIALIZE_MAP()
     };
 
     struct entry
     {
       uint64_t amount;
-      uint64_t instances;
+      uint64_t total_instances;
+      uint64_t unlocked_instances;
+      uint64_t recent_instances;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(amount);
-        KV_SERIALIZE(instances);
+        KV_SERIALIZE(total_instances);
+        KV_SERIALIZE(unlocked_instances);
+        KV_SERIALIZE(recent_instances);
       END_KV_SERIALIZE_MAP()
 
-      entry(uint64_t amount, uint64_t instances): amount(amount), instances(instances) {}
+      entry(uint64_t amount, uint64_t total_instances, uint64_t unlocked_instances, uint64_t recent_instances):
+          amount(amount), total_instances(total_instances), unlocked_instances(unlocked_instances), recent_instances(recent_instances) {}
       entry() {}
     };
 
@@ -1226,5 +1347,89 @@ namespace cryptonote
       END_KV_SERIALIZE_MAP()
     };
   };
-}
 
+  struct COMMAND_RPC_GET_COINBASE_TX_SUM
+  {
+    struct request
+    {
+      uint64_t height;
+      uint64_t count;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(height);
+        KV_SERIALIZE(count);
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string status;
+      uint64_t emission_amount;
+      uint64_t fee_amount;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
+        KV_SERIALIZE(emission_amount)
+        KV_SERIALIZE(fee_amount)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
+  struct COMMAND_RPC_GET_PER_KB_FEE_ESTIMATE
+  {
+    struct request
+    {
+      uint64_t grace_blocks;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(grace_blocks)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string status;
+      uint64_t fee;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
+        KV_SERIALIZE(fee)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+
+  struct COMMAND_RPC_GET_ALTERNATE_CHAINS
+  {
+    struct request
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct chain_info
+    {
+      std::string block_hash;
+      uint64_t height;
+      uint64_t length;
+      uint64_t difficulty;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(block_hash)
+        KV_SERIALIZE(height)
+        KV_SERIALIZE(length)
+        KV_SERIALIZE(difficulty)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response
+    {
+      std::string status;
+      std::list<chain_info> chains;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(status)
+        KV_SERIALIZE(chains)
+      END_KV_SERIALIZE_MAP()
+    };
+  };
+}

@@ -36,20 +36,19 @@ set(rpc_private_headers
   core_rpc_server_commands_defs.h
   core_rpc_server_error_codes.h)
 
-bitmonero_private_headers(rpc
+monero_private_headers(rpc
   ${rpc_private_headers})
-bitmonero_add_library(rpc
+monero_add_library(rpc
   ${rpc_sources}
   ${rpc_headers}
   ${rpc_private_headers})
 target_link_libraries(rpc
-  LINK_PRIVATE
+  PUBLIC
     cryptonote_core
     cryptonote_protocol
-    ${Boost_CHRONO_LIBRARY}
-    ${Boost_REGEX_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
+    epee
     ${Boost_THREAD_LIBRARY}
+  PRIVATE
     ${EXTRA_LIBRARIES})
 add_dependencies(rpc
   version)

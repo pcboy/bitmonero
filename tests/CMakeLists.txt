@@ -28,6 +28,9 @@
 # 
 # Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+# The docs say this only affects grouping in IDEs
+set(folder "tests")
+
 if (WIN32 AND STATIC)
   add_definitions(-DSTATICLIB)
   # miniupnp changed their static define
@@ -39,24 +42,35 @@ find_package(GTest)
 if (GTest_FOUND)
   include_directories(SYSTEM ${GTEST_INCLUDE_DIRS})
 else ()
+  message(STATUS "GTest not found on the system: will use GTest bundled with this source")
   add_subdirectory(gtest)
   include_directories(SYSTEM "${gtest_SOURCE_DIR}/include" "${gtest_SOURCE_DIR}")
 
   # Emulate the FindGTest module's variable.
-  set(GTEST_MAIN_LIBRARIES gtest_main)
+  set(GTEST_LIBRARIES gtest)
 
   # Ignore some warnings when building gtest binaries.
   if(NOT MSVC)
-    set_property(TARGET gtest gtest_main
+    set_property(TARGET gtest
       APPEND_STRING
       PROPERTY
         COMPILE_FLAGS " -Wno-undef -Wno-sign-compare")
   endif()
+
+  set_property(TARGET gtest
+      PROPERTY
+        FOLDER "${folder}")
 endif ()
 
-if (NOT DEFINED ENV{TRAVIS})
-  add_subdirectory(core_tests)
-endif ()
+file(COPY
+  data/wallet_9svHk1.keys
+  data/wallet_9svHk1
+  data/outputs
+  data/unsigned_monero_tx
+  data/signed_monero_tx
+  DESTINATION data)
+
+add_subdirectory(core_tests)
 add_subdirectory(crypto)
 add_subdirectory(functional_tests)
 add_subdirectory(performance_tests)
@@ -65,9 +79,7 @@ add_subdirectory(unit_tests)
 add_subdirectory(difficulty)
 add_subdirectory(hash)
 add_subdirectory(net_load_tests)
-
-# Disabled until issue #895 is resolved
-#add_subdirectory(libwallet_api_tests)
+add_subdirectory(libwallet_api_tests)
 
 # add_subdirectory(daemon_tests)
 
@@ -80,21 +92,23 @@ add_executable(hash-target-tests
   ${hash_targets_sources}
   ${hash_targets_headers})
 target_link_libraries(hash-target-tests
-  LINK_PRIVATE
+  PRIVATE
     cryptonote_core)
 set_property(TARGET hash-target-tests
   PROPERTY
-    FOLDER "tests")
+    FOLDER "${folder}")
 
 add_test(
   NAME    hash-target
   COMMAND hash-target-tests)
 
-# Skip the core_tests if we are running in Travis-CI because they will take too long
-if (DEFINED ENV{TRAVIS})
-  add_custom_target(tests DEPENDS difficulty hash performance_tests core_proxy unit_tests)
-else ()
-  add_custom_target(tests DEPENDS coretests difficulty hash performance_tests core_proxy unit_tests)
-endif ()
+set(enabled_tests
+    coretests
+    difficulty
+    hash
+    performance_tests
+    core_proxy
+    unit_tests)
 
-set_property(TARGET gtest gtest_main hash-target-tests tests PROPERTY FOLDER "tests")
+add_custom_target(tests DEPENDS enabled_tests)
+set_property(TARGET tests PROPERTY FOLDER "${folder}")

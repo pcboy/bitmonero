@@ -38,7 +38,8 @@
 #include <boost/foreach.hpp>
 #include <boost/serialization/is_bitwise_serializable.hpp>
 #include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/portable_binary_iarchive.hpp>
+#include <boost/archive/portable_binary_oarchive.hpp>
 #include "cryptonote_basic.h"
 #include "common/unordered_containers_boost_serialization.h"
 #include "crypto/crypto.h"
@@ -162,11 +163,16 @@ namespace boost
     a & x.vout;
     a & x.extra;
     if (x.version == 1)
+    {
       a & x.signatures;
+    }
     else
-      a & x.rct_signatures;
+    {
+      a & (rct::rctSigBase&)x.rct_signatures;
+      if (x.rct_signatures.type != rct::RCTTypeNull)
+        a & x.rct_signatures.p;
+    }
   }
-
 
   template <class Archive>
   inline void serialize(Archive &a, cryptonote::block &b, const boost::serialization::version_type ver)
@@ -202,11 +208,11 @@ namespace boost
   }
 
   template <class Archive>
-  inline void serialize(Archive &a, rct::asnlSig &x, const boost::serialization::version_type ver)
+  inline void serialize(Archive &a, rct::boroSig &x, const boost::serialization::version_type ver)
   {
-    a & x.L1;
-    a & x.s2;
-    a & x.s;
+    a & x.s0;
+    a & x.s1;
+    a & x.ee;
   }
 
   template <class Archive>
@@ -225,7 +231,8 @@ namespace boost
     // a & x.senderPk; // not serialized, as we do not use it in monero currently
   }
 
-  inline void serializeOutPk(boost::archive::binary_iarchive &a, rct::ctkeyV &outPk_, const boost::serialization::version_type ver)
+  template <class Archive>
+  inline typename std::enable_if<Archive::is_loading::value, void>::type serializeOutPk(Archive &a, rct::ctkeyV &outPk_, const boost::serialization::version_type ver)
   {
     rct::keyV outPk;
     a & outPk;
@@ -237,7 +244,8 @@ namespace boost
     }
   }
 
-  inline void serializeOutPk(boost::archive::binary_oarchive &a, rct::ctkeyV &outPk_, const boost::serialization::version_type ver)
+  template <class Archive>
+  inline typename std::enable_if<Archive::is_saving::value, void>::type serializeOutPk(Archive &a, rct::ctkeyV &outPk_, const boost::serialization::version_type ver)
   {
     rct::keyV outPk(outPk_.size());
     for (size_t n = 0; n < outPk_.size(); ++n)
@@ -260,6 +268,13 @@ namespace boost
     a & x.ecdhInfo;
     serializeOutPk(a, x.outPk, ver);
     a & x.txnFee;
+  }
+
+  template <class Archive>
+  inline void serialize(Archive &a, rct::rctSigPrunable &x, const boost::serialization::version_type ver)
+  {
+    a & x.rangeSigs;
+    a & x.MGs;
   }
 
   template <class Archive>

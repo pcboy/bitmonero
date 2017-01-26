@@ -27,23 +27,21 @@
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set(simplewallet_sources
-  simplewallet.cpp
-  password_container.cpp)
+  simplewallet.cpp)
 
 set(simplewallet_headers)
 
 set(simplewallet_private_headers
-  simplewallet.h
-  password_container.h)
+  simplewallet.h)
 
-bitmonero_private_headers(simplewallet
+monero_private_headers(simplewallet
   ${simplewallet_private_headers})
-bitmonero_add_executable(simplewallet
+monero_add_executable(simplewallet
   ${simplewallet_sources}
   ${simplewallet_headers}
   ${simplewallet_private_headers})
 target_link_libraries(simplewallet
-  LINK_PRIVATE
+  PRIVATE
     wallet
     rpc
     cryptonote_core
@@ -51,9 +49,15 @@ target_link_libraries(simplewallet
     common
     mnemonics
     p2p
-    ${UNBOUND_LIBRARY}
-    ${UPNP_LIBRARIES}
+    ${Boost_CHRONO_LIBRARY}
+    ${Boost_PROGRAM_OPTIONS_LIBRARY}
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     ${EXTRA_LIBRARIES})
 add_dependencies(simplewallet
   version)
+set_property(TARGET simplewallet
+  PROPERTY
+    OUTPUT_NAME "monero-wallet-cli")
+install(TARGETS simplewallet DESTINATION bin)

@@ -107,10 +107,11 @@ namespace cryptonote
       * @param tvc metadata about the transaction's validity
       * @param keeped_by_block if the transaction has been in a block
       * @param relayed whether or not the transaction was relayed to us
+      * @param do_not_relay whether to prevent the transaction from being relayed
       *
       * @return true if the transaction made it to the transaction pool, otherwise false
       */
-     bool handle_incoming_tx(const blobdata& tx_blob, tx_verification_context& tvc, bool keeped_by_block, bool relayed);
+     bool handle_incoming_tx(const blobdata& tx_blob, tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
 
      /**
       * @brief handles an incoming block
@@ -180,6 +181,11 @@ namespace cryptonote
       */
      virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, const blobdata& ex_nonce);
 
+     /**
+      * @brief called when a transaction is relayed
+      */
+     virtual void on_transaction_relayed(const cryptonote::blobdata& tx);
+
 
      /**
       * @brief gets the miner instance
@@ -230,27 +236,9 @@ namespace cryptonote
       *
       * Uninitializes the miner instance, transaction pool, and Blockchain
       *
-      * if m_fast_exit is set, the call to Blockchain::deinit() is not made.
-      *
       * @return true
       */
      bool deinit();
-
-     /**
-      * @brief sets fast exit flag
-      *
-      * @note see deinit()
-      */
-     static void set_fast_exit();
-
-     /**
-      * @brief gets the current state of the fast exit flag
-      *
-      * @return the fast exit flag
-      *
-      * @note see deinit()
-      */
-     static bool get_fast_exit();
 
      /**
       * @brief sets to drop blocks downloaded (for testing)
@@ -342,7 +330,7 @@ namespace cryptonote
       *
       * @note see Blockchain::get_block_by_hash
       */
-     bool get_block_by_hash(const crypto::hash &h, block &blk) const;
+     bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL) const;
 
      /**
       * @copydoc Blockchain::get_alternative_blocks
@@ -392,6 +380,13 @@ namespace cryptonote
       * @note see tx_memory_pool::get_transactions
       */
      bool get_pool_transactions(std::list<transaction>& txs) const;
+     
+     /**
+      * @copydoc tx_memory_pool::get_transaction
+      *
+      * @note see tx_memory_pool::get_transaction
+      */
+     bool get_pool_transaction(const crypto::hash& id, transaction& tx) const;     
 
      /**
       * @copydoc tx_memory_pool::get_pool_transactions_and_spent_keys_info
@@ -477,7 +472,7 @@ namespace cryptonote
       *
       * @note see Blockchain::get_outs
       */
-     bool get_outs(const COMMAND_RPC_GET_OUTPUTS::request& req, COMMAND_RPC_GET_OUTPUTS::response& res) const;
+     bool get_outs(const COMMAND_RPC_GET_OUTPUTS_BIN::request& req, COMMAND_RPC_GET_OUTPUTS_BIN::response& res) const;
 
      /**
       *
@@ -566,6 +561,12 @@ namespace cryptonote
      uint64_t get_target_blockchain_height() const;
 
      /**
+      * @brief gets start_time
+      *
+      */
+     std::time_t get_start_time() const;
+
+     /**
       * @brief tells the Blockchain to update its checkpoints
       *
       * This function will check if enough time has passed since the last
@@ -611,6 +612,27 @@ namespace cryptonote
       */
      bool are_key_images_spent(const std::vector<crypto::key_image>& key_im, std::vector<bool> &spent) const;
 
+     /**
+      * @brief get the number of blocks to sync in one go
+      *
+      * @return the number of blocks to sync in one go
+      */
+     size_t get_block_sync_size() const { return block_sync_size; }
+
+     /**
+      * @brief get the sum of coinbase tx amounts between blocks
+      *
+      * @return the number of blocks to sync in one go
+      */
+     std::pair<uint64_t, uint64_t> get_coinbase_tx_sum(const uint64_t start_offset, const size_t count);
+     
+     /**
+      * @brief get whether we're on testnet or not
+      *
+      * @return are we on testnet?
+      */     
+     bool get_testnet() const { return m_testnet; };
+
    private:
 
      /**
@@ -620,9 +642,10 @@ namespace cryptonote
       * @param tx_prefix_hash the transaction prefix' hash
       * @param blob_size the size of the transaction
       * @param relayed whether or not the transaction was relayed to us
+      * @param do_not_relay whether to prevent the transaction from being relayed
       *
       */
-     bool add_new_tx(const transaction& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prefix_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block, bool relayed);
+     bool add_new_tx(const transaction& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prefix_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
 
      /**
       * @brief add a new transaction to the transaction pool
@@ -633,12 +656,13 @@ namespace cryptonote
       * @param tvc return-by-reference metadata about the transaction's verification process
       * @param keeped_by_block whether or not the transaction has been in a block
       * @param relayed whether or not the transaction was relayed to us
+      * @param do_not_relay whether to prevent the transaction from being relayed
       *
       * @return true if the transaction is already in the transaction pool,
       * is already in a block on the Blockchain, or is successfully added
       * to the transaction pool
       */
-     bool add_new_tx(const transaction& tx, tx_verification_context& tvc, bool keeped_by_block, bool relayed);
+     bool add_new_tx(const transaction& tx, tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay);
 
      /**
       * @copydoc Blockchain::add_new_block
@@ -757,8 +781,6 @@ namespace cryptonote
       */
      bool unlock_db_directory();
 
-     static std::atomic<bool> m_fast_exit; //!< whether or not to deinit Blockchain on exit
-
      bool m_test_drop_download = true; //!< whether or not to drop incoming blocks (for testing)
 
      uint64_t m_test_drop_download_height = 0; //!< height under which to drop incoming blocks, if doing so
@@ -798,6 +820,12 @@ namespace cryptonote
      std::atomic_flag m_checkpoints_updating; //!< set if checkpoints are currently updating to avoid multiple threads attempting to update at once
 
      boost::interprocess::file_lock db_lock; //!< a lock object for a file lock in the db directory
+
+     size_t block_sync_size;
+
+     time_t start_time;
+
+     std::unordered_set<crypto::hash> bad_semantics_txes;
    };
 }
 

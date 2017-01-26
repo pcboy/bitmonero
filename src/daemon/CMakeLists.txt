@@ -74,22 +74,21 @@ set(daemon_private_headers
   ../p2p/p2p_protocol_defs.h
   ../p2p/stdafx.h)
 
-bitmonero_private_headers(daemon
+monero_private_headers(daemon
   ${daemon_private_headers})
-bitmonero_add_executable(daemon
+monero_add_executable(daemon
   ${daemon_sources}
   ${daemon_headers}
   ${daemon_private_headers}
   ${blocksdat}
 )
 target_link_libraries(daemon
-  LINK_PRIVATE
+  PRIVATE
     rpc
     blockchain_db
     cryptonote_core
     crypto
     common
-    otshell_utils
     p2p
     cryptonote_protocol
     daemonizer
@@ -98,11 +97,10 @@ target_link_libraries(daemon
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_REGEX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
-    ${UPNP_LIBRARIES}
     ${EXTRA_LIBRARIES})
 add_dependencies(daemon version)
 set_property(TARGET daemon
   PROPERTY
-    OUTPUT_NAME "bitmonerod")
+    OUTPUT_NAME "monerod")
+install(TARGETS daemon DESTINATION bin)

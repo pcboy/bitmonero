@@ -32,7 +32,7 @@
 #include "wallet/wallet2_api.h"
 #include <string>
 
-namespace Bitmonero {
+namespace Monero {
 
 class WalletManagerImpl : public WalletManager
 {
@@ -40,17 +40,32 @@ public:
     Wallet * createWallet(const std::string &path, const std::string &password,
                           const std::string &language, bool testnet);
     Wallet * openWallet(const std::string &path, const std::string &password, bool testnet);
-    virtual Wallet * recoveryWallet(const std::string &path, const std::string &memo, bool testnet);
+    virtual Wallet * recoveryWallet(const std::string &path, const std::string &memo, bool testnet, uint64_t restoreHeight);
     virtual bool closeWallet(Wallet *wallet);
     bool walletExists(const std::string &path);
     std::vector<std::string> findWallets(const std::string &path);
     std::string errorString() const;
-    void setDaemonHost(const std::string &hostname);
+    void setDaemonAddress(const std::string &address);
+    bool connected(uint32_t *version = NULL) const;
+    bool checkPayment(const std::string &address, const std::string &txid, const std::string &txkey, const std::string &daemon_address, uint64_t &received, uint64_t &height, std::string &error) const;
+    uint64_t blockchainHeight() const;
+    uint64_t blockchainTargetHeight() const;
+    uint64_t networkDifficulty() const;
+    double miningHashRate() const;
+    void hardForkInfo(uint8_t &version, uint64_t &earliest_height) const;
+    uint64_t blockTarget() const;
+    bool isMining() const;
+    bool startMining(const std::string &address, uint32_t threads = 1);
+    bool stopMining();
+    std::string resolveOpenAlias(const std::string &address, bool &dnssec_valid) const;
 
 private:
     WalletManagerImpl() {}
     friend struct WalletManagerFactory;
+    std::string m_daemonAddress;
     std::string m_errorString;
 };
 
 } // namespace
+
+namespace Bitmonero = Monero;
